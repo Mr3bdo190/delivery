@@ -32,9 +32,8 @@ jobs:
       - name: Add Internet Permission
         run: sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
 
-      - name: Generate Firebase Options (The Ultimate Fix)
+      - name: Generate Firebase Options (Fixed Variables)
         run: |
-          # استخراج المفاتيح من ملف json وتحويلها لملف كود Dart لتخطي أخطاء الأندرويد
           API_KEY=$(jq -r '.client[0].api_key[0].current_key' android/app/google-services.json)
           APP_ID=$(jq -r '.client[0].client_info.mobilesdk_app_id' android/app/google-services.json)
           PROJECT_ID=$(jq -r '.project_info.project_id' android/app/google-services.json)
@@ -43,10 +42,10 @@ jobs:
           cat << DART_EOF > lib/firebase_options.dart
           import 'package:firebase_core/firebase_core.dart';
           const firebaseOptions = FirebaseOptions(
-            apiKey: '\$API_KEY',
-            appId: '\$APP_ID',
-            messagingSenderId: '\$SENDER_ID',
-            projectId: '\$PROJECT_ID',
+            apiKey: '${API_KEY}',
+            appId: '${APP_ID}',
+            messagingSenderId: '${SENDER_ID}',
+            projectId: '${PROJECT_ID}',
           );
           DART_EOF
 

@@ -29,14 +29,15 @@ jobs:
       - name: Create Platform Files
         run: flutter create .
 
-      - name: Inject Firebase Gradle Plugins (The Automation Hack)
+      - name: Inject Firebase Gradle Plugins (The Fix)
         run: |
-          # إدراج مكوّن فايربيز في ملف build.gradle الرئيسي
-          sed -i '/plugins {/a \    id "com.google.gms.google-services" version "4.4.1" apply false' android/build.gradle
-          # إدراج المكوّن في ملف build.gradle الخاص بالتطبيق
+          # إضافة إصدار الفايربيز في ملف settings.gradle (الطريقة الصحيحة لفلاتر الحديث)
+          sed -i '/plugins {/a \    id "com.google.gms.google-services" version "4.4.1" apply false' android/settings.gradle
+          
+          # إضافة تعريف الفايربيز لملف التطبيق
           sed -i '/plugins {/a \    id "com.google.gms.google-services"' android/app/build.gradle
-
-          # إضافة صلاحية الإنترنت بشكل صريح للتطبيق في الـ Manifest
+          
+          # إعطاء صلاحية الإنترنت للتطبيق
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
 
       - name: Get Dependencies

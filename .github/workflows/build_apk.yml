@@ -29,8 +29,12 @@ jobs:
       - name: Create Platform Files
         run: flutter create .
 
-      - name: Add Internet and GPS Permissions
+      - name: Fix Kotlin Version & Add Permissions
         run: |
+          # تحديث إصدار Kotlin ليتوافق مع مكتبة الـ GPS
+          sed -i "s/ext.kotlin_version = '[^']*'/ext.kotlin_version = '1.9.22'/g" android/build.gradle
+          
+          # إضافة صلاحيات الإنترنت والموقع
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>' android/app/src/main/AndroidManifest.xml
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>' android/app/src/main/AndroidManifest.xml

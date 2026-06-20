@@ -60,7 +60,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     double total = 0.0;
     for (var doc in activeOrders.docs) {
-      total += (doc.data()['delivery_fee'] ?? 0.0);
+      // التعديل هنا: تعريف نوع البيانات صراحةً
+      final data = doc.data() as Map<String, dynamic>;
+      total += (data['delivery_fee'] ?? 0.0);
     }
 
     WriteBatch batch = firestore.batch();
@@ -113,7 +115,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   double total = 0;
                   int count = snapshot.data!.docs.length;
                   for (var doc in snapshot.data!.docs) {
-                    total += (doc.data()['delivery_fee'] ?? 0.0);
+                    // التعديل هنا أيضاً
+                    final data = doc.data() as Map<String, dynamic>;
+                    total += (data['delivery_fee'] ?? 0.0);
                   }
 
                   return Column(
@@ -141,9 +145,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       itemCount: snapshot.data!.docs.length,
                       itemBuilder: (context, index) {
                         var doc = snapshot.data!.docs[index];
+                        // التعديل هنا في عرض البيانات
+                        final data = doc.data() as Map<String, dynamic>;
                         return ListTile(
                           leading: const Icon(Icons.check_circle, color: Colors.greenAccent),
-                          title: Text("${doc['delivery_fee']} ج.م", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textDirection: TextDirection.rtl),
+                          title: Text("${data['delivery_fee']} ج.م", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textDirection: TextDirection.rtl),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                             onPressed: () => doc.reference.delete(),

@@ -29,15 +29,19 @@ jobs:
       - name: Create Platform Files
         run: flutter create .
 
-      - name: Inject Firebase Gradle Plugins (The Fix)
+      - name: Hardcode Package Name and Inject Firebase
         run: |
-          # إضافة إصدار الفايربيز في ملف settings.gradle (الطريقة الصحيحة لفلاتر الحديث)
+          # 1. استبدال اسم الحزمة الافتراضي باسم الحزمة الخاص بك في كل ملفات الأندرويد
+          find android/ -type f \( -name "*.gradle" -o -name "*.xml" -o -name "*.kt" -o -name "*.java" \) -exec sed -i 's/com.example.delivery_tracker/com.delivery.mr3bdo/g' {} +
+          find android/ -type f \( -name "*.gradle" -o -name "*.xml" -o -name "*.kt" -o -name "*.java" \) -exec sed -i 's/com.example.delivery/com.delivery.mr3bdo/g' {} +
+
+          # 2. إضافة إصدار الفايربيز في ملف settings.gradle
           sed -i '/plugins {/a \    id "com.google.gms.google-services" version "4.4.1" apply false' android/settings.gradle
           
-          # إضافة تعريف الفايربيز لملف التطبيق
+          # 3. إضافة تعريف الفايربيز لملف التطبيق build.gradle
           sed -i '/plugins {/a \    id "com.google.gms.google-services"' android/app/build.gradle
           
-          # إعطاء صلاحية الإنترنت للتطبيق
+          # 4. إضافة صلاحية الإنترنت بشكل صريح في الـ Manifest
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
 
       - name: Get Dependencies

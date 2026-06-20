@@ -7,19 +7,23 @@ import 'screens/history.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   bool isFirebaseInit = false;
+  String errorMessage = '';
   try {
     await Firebase.initializeApp();
     FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
     isFirebaseInit = true;
   } catch (e) {
+    // هنا هنمسك الخطأ الحقيقي ونحفظه
+    errorMessage = e.toString();
     debugPrint("Firebase init error: $e");
   }
-  runApp(DeliveryApp(isFirebaseInit: isFirebaseInit));
+  runApp(DeliveryApp(isFirebaseInit: isFirebaseInit, errorMessage: errorMessage));
 }
 
 class DeliveryApp extends StatelessWidget {
   final bool isFirebaseInit;
-  const DeliveryApp({super.key, required this.isFirebaseInit});
+  final String errorMessage;
+  const DeliveryApp({super.key, required this.isFirebaseInit, required this.errorMessage});
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +31,33 @@ class DeliveryApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Delivery Tracker',
       theme: ThemeData(brightness: Brightness.dark, fontFamily: 'Cairo'),
-      home: isFirebaseInit ? const MainScreen() : const ErrorScreen(),
+      // لو في خطأ هنعرض الشاشة اللي بتفصل المشكلة
+      home: isFirebaseInit ? const MainScreen() : ErrorScreen(error: errorMessage),
+    );
+  }
+}
+
+class ErrorScreen extends StatelessWidget {
+  final String error;
+  const ErrorScreen({super.key, required this.error});
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1E1E2C),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Center(
+          child: SingleChildScrollView(
+            child: SelectableText(
+              "تفاصيل الخطأ البرمجي:\n\n$error",
+              style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+              textDirection: TextDirection.ltr, // خليناها إنجليزي عشان الكود يبان صح
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -66,17 +96,6 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'السجل'),
         ],
       ),
-    );
-  }
-}
-
-class ErrorScreen extends StatelessWidget {
-  const ErrorScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF1E1E2C),
-      body: Center(child: Text("حدث خطأ في الاتصال بقاعدة البيانات", style: TextStyle(color: Colors.white))),
     );
   }
 }

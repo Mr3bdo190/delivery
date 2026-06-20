@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'firebase_options.dart'; // الملف اللي السيرفر هيكريته
 import 'screens/dashboard.dart';
 import 'screens/history.dart';
 
@@ -9,11 +10,11 @@ void main() async {
   bool isFirebaseInit = false;
   String errorMessage = '';
   try {
-    await Firebase.initializeApp();
+    // التعديل هنا: تمرير الإعدادات مباشرة بدون الاعتماد على الأندرويد
+    await Firebase.initializeApp(options: firebaseOptions);
     FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
     isFirebaseInit = true;
   } catch (e) {
-    // هنا هنمسك الخطأ الحقيقي ونحفظه
     errorMessage = e.toString();
     debugPrint("Firebase init error: $e");
   }
@@ -31,7 +32,6 @@ class DeliveryApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Delivery Tracker',
       theme: ThemeData(brightness: Brightness.dark, fontFamily: 'Cairo'),
-      // لو في خطأ هنعرض الشاشة اللي بتفصل المشكلة
       home: isFirebaseInit ? const MainScreen() : ErrorScreen(error: errorMessage),
     );
   }
@@ -52,7 +52,7 @@ class ErrorScreen extends StatelessWidget {
             child: SelectableText(
               "تفاصيل الخطأ البرمجي:\n\n$error",
               style: const TextStyle(color: Colors.redAccent, fontSize: 14),
-              textDirection: TextDirection.ltr, // خليناها إنجليزي عشان الكود يبان صح
+              textDirection: TextDirection.ltr,
               textAlign: TextAlign.center,
             ),
           ),

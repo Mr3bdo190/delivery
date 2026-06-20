@@ -1,5 +1,7 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 import '../widgets/glass_box.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -11,11 +13,47 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  Position? _currentPosition;
+  bool _isSorting = false;
+
+  // دالة لحساب المسافة بين نقطتين جغرافيين (بالكيلومتر)
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    var p = 0.017453292519943295;
+    var c = cos;
+    var a = 0.5 - c((lat2 - lat1) * p)/2 + 
+          c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p))/2;
+    return 12742 * asin(sqrt(a));
+  }
+
+  // دالة جلب موقع السائق الحالي بالـ GPS
+  Future<void> _getCurrentLocation() async {
+    setState(() => _isSorting = true);
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+        Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+        setState(() {
+          _currentPosition = position;
+          _isSorting = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تحديث موقعك وترتيب الأوردرات حسب الأقرب!', textDirection: TextDirection.rtl), backgroundColor: Colors.blue),
+        );
+      }
+    } catch (e) {
+      setState(() => _isSorting = false);
+      debugPrint("GPS Error: $e");
+    }
+  }
 
   void _showAddOrderDialog() {
     TextEditingController feeController = TextEditingController();
     TextEditingController tipController = TextEditingController();
     TextEditingController restaurantController = TextEditingController();
+    TextEditingController locationController = TextEditingController();
 
     showDialog(
       context: context,
@@ -30,11 +68,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               TextField(
                 controller: restaurantController,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'اسم المطعم / المنطقة',
-                  hintStyle: TextStyle(color: Colors.white54),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                ),
+                decoration: const InputDecoration(hintText: 'اسم المطعم / المنطقة', hintStyle: TextStyle(color: Colors.white54)),
                 textDirection: TextDirection.rtl,
               ),
               const SizedBox(height: 10),
@@ -42,11 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 controller: feeController,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'قيمة التوصيل (ج.م) *',
-                  hintStyle: TextStyle(color: Colors.white54),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                ),
+                decoration: const InputDecoration(hintText: 'قيمة التوصيل (ج.م) *', hintStyle: TextStyle(color: Colors.white54)),
                 textDirection: TextDirection.rtl,
               ),
               const SizedBox(height: 10),
@@ -54,41 +84,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 controller: tipController,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'البقشيش / التيب (اختياري)',
-                  hintStyle: TextStyle(color: Colors.white54),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                ),
+                decoration: const InputDecoration(hintText: 'البقشيش / التيب (اختياري)', hintStyle: TextStyle(color: Colors.white54)),
+                textDirection: TextDirection.rtl,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: locationController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(hintText: 'انسخ هنا الرابط أو الإحداثيات (اختياري)', hintStyle: TextStyle(color: Colors.white54)),
                 textDirection: TextDirection.rtl,
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء', style: TextStyle(color: Colors.redAccent)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء', style: TextStyle(color: Colors.redAccent))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent),
             onPressed: () {
-              // حماية الإدخال لضمان عدم حدوث Crash
               double? fee = double.tryParse(feeController.text);
               double tip = double.tryParse(tipController.text) ?? 0.0;
               String restaurant = restaurantController.text.trim();
+              String locText = locationController.text.trim();
+
+              double lat = 0.0;
+              double lng = 0.0;
+
+              // سكريبت ذكي لاستخراج الإحداثيات لو نسخ رابط أو أرقام مباشرة
+              RegExp regExp = RegExp(r'([0-9.-]+)\s*,\s*([0-9.-]+)');
+              var match = regExp.firstMatch(locText);
+              if (match != null) {
+                lat = double.parse(match.group(1)!);
+                lng = double.parse(match.group(2)!);
+              }
 
               if (fee != null) {
                 firestore.collection('active_orders').add({
                   'delivery_fee': fee,
                   'tip': tip,
                   'restaurant': restaurant.isEmpty ? 'أوردر عام' : restaurant,
+                  'location_url': locText.startsWith('http') ? locText : 'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+                  'latitude': lat,
+                  'longitude': lng,
                   'timestamp': FieldValue.serverTimestamp(),
                 });
                 Navigator.pop(context);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('برجاء إدخال قيمة توصيل صحيحة', textDirection: TextDirection.rtl), backgroundColor: Colors.redAccent),
-                );
               }
             },
             child: const Text('إضافة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -96,38 +136,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _archiveDay() async {
-    final activeOrders = await firestore.collection('active_orders').get();
-    if (activeOrders.docs.isEmpty) return;
-
-    double total = 0.0;
-    for (var doc in activeOrders.docs) {
-      final data = doc.data() as Map<String, dynamic>;
-      double fee = (data['delivery_fee'] ?? 0.0).toDouble();
-      double tip = (data['tip'] ?? 0.0).toDouble();
-      total += (fee + tip); // جمع التوصيل + التيب في المجموع النهائي للخدمة
-    }
-
-    WriteBatch batch = firestore.batch();
-    String today = DateTime.now().toString().split(' ')[0];
-    
-    batch.set(firestore.collection('daily_summary').doc(today), {
-      'date': today,
-      'total_orders': activeOrders.docs.length,
-      'total_earnings': total,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    for (var doc in activeOrders.docs) {
-      batch.delete(doc.reference);
-    }
-
-    await batch.commit();
-    if(mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم ترحيل الشيفت وحفظه في السجل!', textDirection: TextDirection.rtl), backgroundColor: Colors.green));
-    }
   }
 
   @override
@@ -141,9 +149,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.archive_outlined, color: Colors.orangeAccent),
-            onPressed: _archiveDay,
-            tooltip: 'ترحيل اليوم',
+            icon: _isSorting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blueAccent)) : const Icon(Icons.location_searching, color: Colors.blueAccent),
+            onPressed: _getCurrentLocation,
+            tooltip: 'ترتيب حسب موقعي الحالي',
           ),
         ],
       ),
@@ -151,57 +159,92 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
+            // كارت الإحصائيات الإجمالي
             GlassBox(
-              height: 160,
+              height: 140,
               child: StreamBuilder<QuerySnapshot>(
                 stream: firestore.collection('active_orders').snapshots(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(color: Colors.orangeAccent));
-                  
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                   double total = 0;
                   int count = snapshot.data!.docs.length;
                   for (var doc in snapshot.data!.docs) {
                     final data = doc.data() as Map<String, dynamic>;
-                    double fee = (data['delivery_fee'] ?? 0.0).toDouble();
-                    double tip = (data['tip'] ?? 0.0).toDouble();
-                    total += (fee + tip);
+                    total += ((data['delivery_fee'] ?? 0) + (data['tip'] ?? 0)).toDouble();
                   }
-
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.motorcycle, size: 40, color: Colors.orangeAccent),
-                      const SizedBox(height: 10),
-                      Text("إجمالي ($count أوردر)", style: const TextStyle(fontSize: 18, color: Colors.white70), textDirection: TextDirection.rtl),
-                      Text("$total ج.م", style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white), textDirection: TextDirection.rtl),
+                      Text("إجمالي ($count أوردر)", style: const TextStyle(fontSize: 16, color: Colors.white70)),
+                      Text("$total ج.م", style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white)),
                     ],
                   );
                 },
               ),
             ),
             const SizedBox(height: 20),
+            // قائمة الأوردرات المرتبة جغرافيًا
             Expanded(
               child: GlassBox(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: firestore.collection('active_orders').orderBy('timestamp', descending: true).snapshots(),
+                  stream: firestore.collection('active_orders').snapshots(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                    if (snapshot.data!.docs.isEmpty) return const Center(child: Text("ابدأ الشغل وسجل أول أوردر!", style: TextStyle(color: Colors.white54, fontSize: 16), textDirection: TextDirection.rtl));
-                    
+                    if (snapshot.data!.docs.isEmpty) return const Center(child: Text("سجل أول أوردر لبدء الشيفت!", style: TextStyle(color: Colors.white54)));
+
+                    // تحويل البيانات لقائمة محلية عشان نقدر نرتبها بالـ GPS
+                    List<DocumentSnapshot> orders = snapshot.data!.docs;
+
+                    if (_currentPosition != null) {
+                      orders.sort((a, b) {
+                        final dataA = a.data() as Map<String, dynamic>;
+                        final dataB = b.data() as Map<String, dynamic>;
+
+                        double latA = (dataA['latitude'] ?? 0.0).toDouble();
+                        double lngA = (dataA['longitude'] ?? 0.0).toDouble();
+                        double latB = (dataB['latitude'] ?? 0.0).toDouble();
+                        double lngB = (dataB['longitude'] ?? 0.0).toDouble();
+
+                        if (latA == 0.0 || lngA == 0.0) return 1;
+                        if (latB == 0.0 || lngB == 0.0) return -1;
+
+                        double distA = _calculateDistance(_currentPosition!.latitude, _currentPosition!.longitude, latA, lngA);
+                        double distB = _calculateDistance(_currentPosition!.latitude, _currentPosition!.longitude, latB, lngB);
+
+                        return distA.compareTo(distB); // ترتيب تصاعدي (من الأقرب للأبعد)
+                      });
+                    }
+
                     return ListView.builder(
-                      itemCount: snapshot.data!.docs.length,
+                      itemCount: orders.length,
                       itemBuilder: (context, index) {
-                        var doc = snapshot.data!.docs[index];
+                        var doc = orders[index];
                         final data = doc.data() as Map<String, dynamic>;
-                        
+
                         double fee = (data['delivery_fee'] ?? 0.0).toDouble();
                         double tip = (data['tip'] ?? 0.0).toDouble();
                         String restaurant = data['restaurant'] ?? 'أوردر عام';
+                        double lat = (data['latitude'] ?? 0.0).toDouble();
+                        double lng = (data['longitude'] ?? 0.0).toDouble();
+
+                        double distance = 0.0;
+                        if (_currentPosition != null && lat != 0.0 && lng != 0.0) {
+                          distance = _calculateDistance(_currentPosition!.latitude, _currentPosition!.longitude, lat, lng);
+                        }
 
                         return ListTile(
-                          leading: const Icon(Icons.check_circle, color: Colors.greenAccent),
+                          leading: CircleAvatar(
+                            backgroundColor: distance > 0 ? Colors.blue.withOpacity(0.2) : Colors.green.withOpacity(0.2),
+                            child: Icon(distance > 0 ? Icons.navigation : Icons.check_circle, color: distance > 0 ? Colors.blueAccent : Colors.greenAccent),
+                          ),
                           title: Text(restaurant, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textDirection: TextDirection.rtl),
-                          subtitle: Text("توصيل: $fee ج.م | تيب: $tip ج.م", style: const TextStyle(color: Colors.white70), textDirection: TextDirection.rtl),
+                          subtitle: Text(
+                            distance > 0 
+                                ? "توصيل: $fee ج.م | يبعد: ${distance.toStringAsFixed(1)} كم"
+                                : "توصيل: $fee ج.م | تيب: $tip ج.م",
+                            style: const TextStyle(color: Colors.white70),
+                            textDirection: TextDirection.rtl,
+                          ),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                             onPressed: () => doc.reference.delete(),

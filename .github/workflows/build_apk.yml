@@ -29,10 +29,13 @@ jobs:
       - name: Create Platform Files
         run: flutter create .
 
-      - name: Add Internet Permission
-        run: sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
+      - name: Add Internet and GPS Permissions
+        run: |
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>' android/app/src/main/AndroidManifest.xml
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>' android/app/src/main/AndroidManifest.xml
 
-      - name: Generate Firebase Options (Fixed Variables)
+      - name: Generate Firebase Options
         run: |
           API_KEY=$(jq -r '.client[0].api_key[0].current_key' android/app/google-services.json)
           APP_ID=$(jq -r '.client[0].client_info.mobilesdk_app_id' android/app/google-services.json)

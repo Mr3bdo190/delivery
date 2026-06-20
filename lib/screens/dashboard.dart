@@ -14,22 +14,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _showAddOrderDialog() {
     TextEditingController feeController = TextEditingController();
+    TextEditingController tipController = TextEditingController();
+    TextEditingController restaurantController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2C2C44),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('أوردر جديد', style: TextStyle(color: Colors.white), textAlign: TextAlign.right),
-        content: TextField(
-          controller: feeController,
-          keyboardType: TextInputType.number,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'قيمة التوصيل (ج.م)',
-            hintStyle: TextStyle(color: Colors.white54),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+        title: const Text('تسجيل أوردر جديد', style: TextStyle(color: Colors.white), textAlign: TextAlign.right),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: restaurantController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'اسم المطعم / المنطقة',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                ),
+                textDirection: TextDirection.rtl,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: feeController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'قيمة التوصيل (ج.م) *',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                ),
+                textDirection: TextDirection.rtl,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: tipController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'البقشيش / التيب (اختياري)',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                ),
+                textDirection: TextDirection.rtl,
+              ),
+            ],
           ),
-          textDirection: TextDirection.rtl,
         ),
         actions: [
           TextButton(
@@ -39,12 +72,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent),
             onPressed: () {
-              if (feeController.text.isNotEmpty) {
+              // حماية الإدخال لضمان عدم حدوث Crash
+              double? fee = double.tryParse(feeController.text);
+              double tip = double.tryParse(tipController.text) ?? 0.0;
+              String restaurant = restaurantController.text.trim();
+
+              if (fee != null) {
                 firestore.collection('active_orders').add({
-                  'delivery_fee': double.parse(feeController.text),
+                  'delivery_fee': fee,
+                  'tip': tip,
+                  'restaurant': restaurant.isEmpty ? 'أوردر عام' : restaurant,
                   'timestamp': FieldValue.serverTimestamp(),
                 });
                 Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('برجاء إدخال قيمة توصيل صحيحة', textDirection: TextDirection.rtl), backgroundColor: Colors.redAccent),
+                );
               }
             },
             child: const Text('إضافة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -60,9 +104,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     double total = 0.0;
     for (var doc in activeOrders.docs) {
-      // التعديل هنا: تعريف نوع البيانات صراحةً
       final data = doc.data() as Map<String, dynamic>;
-      total += (data['delivery_fee'] ?? 0.0);
+      double fee = (data['delivery_fee'] ?? 0.0).toDouble();
+      double tip = (data['tip'] ?? 0.0).toDouble();
+      total += (fee + tip); // جمع التوصيل + التيب في المجموع النهائي للخدمة
     }
 
     WriteBatch batch = firestore.batch();
@@ -81,7 +126,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     await batch.commit();
     if(mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم ترحيل اليوم بنجاح!', textDirection: TextDirection.rtl), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم ترحيل الشيفت وحفظه في السجل!', textDirection: TextDirection.rtl), backgroundColor: Colors.green));
     }
   }
 
@@ -98,6 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           IconButton(
             icon: const Icon(Icons.archive_outlined, color: Colors.orangeAccent),
             onPressed: _archiveDay,
+            tooltip: 'ترحيل اليوم',
           ),
         ],
       ),
@@ -115,9 +161,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   double total = 0;
                   int count = snapshot.data!.docs.length;
                   for (var doc in snapshot.data!.docs) {
-                    // التعديل هنا أيضاً
                     final data = doc.data() as Map<String, dynamic>;
-                    total += (data['delivery_fee'] ?? 0.0);
+                    double fee = (data['delivery_fee'] ?? 0.0).toDouble();
+                    double tip = (data['tip'] ?? 0.0).toDouble();
+                    total += (fee + tip);
                   }
 
                   return Column(
@@ -145,11 +192,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       itemCount: snapshot.data!.docs.length,
                       itemBuilder: (context, index) {
                         var doc = snapshot.data!.docs[index];
-                        // التعديل هنا في عرض البيانات
                         final data = doc.data() as Map<String, dynamic>;
+                        
+                        double fee = (data['delivery_fee'] ?? 0.0).toDouble();
+                        double tip = (data['tip'] ?? 0.0).toDouble();
+                        String restaurant = data['restaurant'] ?? 'أوردر عام';
+
                         return ListTile(
                           leading: const Icon(Icons.check_circle, color: Colors.greenAccent),
-                          title: Text("${data['delivery_fee']} ج.م", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textDirection: TextDirection.rtl),
+                          title: Text(restaurant, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textDirection: TextDirection.rtl),
+                          subtitle: Text("توصيل: $fee ج.م | تيب: $tip ج.م", style: const TextStyle(color: Colors.white70), textDirection: TextDirection.rtl),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                             onPressed: () => doc.reference.delete(),
@@ -168,7 +220,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: Colors.orangeAccent,
         onPressed: _showAddOrderDialog,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text("تسجيل", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: const Text("تسجيل أوردر", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }

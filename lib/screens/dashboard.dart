@@ -119,7 +119,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // نافذة تسجيل مصروف جديد (بنزين - طعام - زيت إلخ)
+  // نافذة تسجيل مصروف جديد
   void _showAddExpenseDialog() {
     TextEditingController amountController = TextEditingController();
     TextEditingController titleController = TextEditingController();
@@ -180,14 +180,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _archiveDay(double totalEarnings, double totalExpenses) async {
-    HapticFeedback.heavyImpact(); // اهتزاز قوي عند الترحيل النهائي لليوم
+    HapticFeedback.heavyImpact(); 
     final activeOrders = await firestore.collection('active_orders').get();
     final activeExpenses = await firestore.collection('active_expenses').get();
 
     WriteBatch batch = firestore.batch();
     String today = DateTime.now().toString().split(' ')[0];
     
-    // حفظ الملخص المالي الكامل في السجل
     batch.set(firestore.collection('daily_summary').doc(today), {
       'date': today,
       'total_orders': activeOrders.docs.length,
@@ -197,7 +196,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       'timestamp': FieldValue.serverTimestamp(),
     });
 
-    // حذف الداتا المؤقتة للوردية الحالية لتصفير العدادات
     for (var doc in activeOrders.docs) {
       batch.delete(doc.reference);
     }
@@ -216,7 +214,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.all(15.0),
           child: Column(
             children: [
-              // كارت الحسابات والمطابقة للموك اب (أرباح - مصاريف - صافي ربح)
+              // كارت الحسابات
               StreamBuilder<QuerySnapshot>(
                 stream: firestore.collection('active_orders').snapshots(),
                 builder: (context, orderSnapshot) {
@@ -271,7 +269,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ],
                             ),
                             const Divider(color: Colors.white12, height: 20),
-                            // زر ترحيل الشفت مدمج ذكي
                             InkWell(
                               onTap: () => _archiveDay(totalEarnings, totalExpenses),
                               child: Row(
@@ -295,7 +292,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.redWidget?.withOpacity(0.2) ?? const Color(0xFF331E24), side: const BorderSide(color: Colors.redAccent)),
+                    // تم إصلاح الخطأ هنا
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent.withOpacity(0.2), side: const BorderSide(color: Colors.redAccent)),
                     onPressed: _showAddExpenseDialog,
                     icon: const Icon(Icons.money_off, color: Colors.redAccent, size: 16),
                     label: const Text("تسجيل مصروف", style: TextStyle(color: Colors.redAccent)),
@@ -304,7 +302,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               const SizedBox(height: 10),
-              // القائمة المتكاملة بالأزرار التفاعلية والخرائط
+              // القائمة المتكاملة
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: firestore.collection('active_orders').snapshots(),
@@ -347,7 +345,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // اليسار: زر فتح الخريطة ومؤشر المسافة
                               lat != 0.0 
                               ? InkWell(
                                   onTap: () => _launchMaps(lat, lng),
@@ -359,7 +356,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                 )
                               : const Icon(Icons.location_off, color: Colors.white24),
-                              // اليمين: تفاصيل ومبالغ الخدمة
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -379,7 +375,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               const SizedBox(width: 5),
                               IconButton(
-                                icon: const Icon(Icons.remove_circle_outline, color: Colors.redOpacity ?? Colors.redAccent, size: 20),
+                                // تم إصلاح الخطأ هنا أيضاً
+                                icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 20),
                                 onPressed: () {
                                   HapticFeedback.lightImpact();
                                   doc.reference.delete();
@@ -393,7 +390,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   },
                 ),
               ),
-              // لوحة التحكم وتحديث الرادار السفلي
               const SizedBox(height: 5),
               InkWell(
                 onTap: _getCurrentLocation,
@@ -405,7 +401,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       _isSorting ? const CircularProgressIndicator(color: Colors.blueAccent) : const Icon(Icons.radar, color: Colors.blueAccent, size: 24),
                       const SizedBox(width: 10),
-                      const Text('تشغيل رادار الفرز الجغرافي (تحديث الموقع الحالي)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      const Text('تشغيل رادار الفرز الجغرافي (تحديث الموقع)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),

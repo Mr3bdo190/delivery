@@ -29,18 +29,18 @@ jobs:
       - name: Create Platform Files
         run: flutter create .
 
-      - name: Fix Kotlin Version & Add Permissions
+      - name: Fix Kotlin Version & Add Permissions & Queries
         run: |
-          # التعديل الأهم: تحديث إصدار Kotlin في النظام الجديد لفلاتر
           sed -i -E 's/id "org.jetbrains.kotlin.android" version "[0-9\.]+"/id "org.jetbrains.kotlin.android" version "1.9.24"/g' android/settings.gradle
-          
-          # تحديث احتياطي للنظام القديم
           sed -i -E "s/ext.kotlin_version = '[0-9\.]+'/ext.kotlin_version = '1.9.24'/g" android/build.gradle
           
-          # إضافة صلاحيات الإنترنت والموقع
+          # إضافة الصلاحيات
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>' android/app/src/main/AndroidManifest.xml
           sed -i '/<manifest/a \    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>' android/app/src/main/AndroidManifest.xml
+          
+          # حقن استعلامات فتح روابط الخرائط الخارجية (Queries) لأندرويد 11+
+          sed -i '/<\/manifest>/i \    <queries>\n        <intent>\n            <action android:name="android.intent.action.VIEW" />\n            <data android:scheme="https" />\n        </intent>\n    </queries>' android/app/src/main/AndroidManifest.xml
 
       - name: Generate Firebase Options
         run: |

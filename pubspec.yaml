@@ -1,5 +1,5 @@
 name: delivery_tracker
-description: A new Flutter project to track delivery earnings with GPS sorting.
+description: Ultimate delivery tracker with GPS, Expense tracking and Google Maps launcher.
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -12,6 +12,7 @@ dependencies:
   firebase_core: ^2.32.0
   cloud_firestore: ^4.17.5
   geolocator: ^10.1.0
+  url_launcher: ^6.2.5
 
 dev_dependencies:
   flutter_test:

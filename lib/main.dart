@@ -1,63 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'firebase_options.dart'; // الملف اللي السيرفر هيكريته
+import 'firebase_options.dart';
 import 'screens/dashboard.dart';
 import 'screens/history.dart';
+import 'screens/settings.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   bool isFirebaseInit = false;
-  String errorMessage = '';
   try {
-    // التعديل هنا: تمرير الإعدادات مباشرة بدون الاعتماد على الأندرويد
     await Firebase.initializeApp(options: firebaseOptions);
     FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
     isFirebaseInit = true;
   } catch (e) {
-    errorMessage = e.toString();
     debugPrint("Firebase init error: $e");
   }
-  runApp(DeliveryApp(isFirebaseInit: isFirebaseInit, errorMessage: errorMessage));
+  runApp(DeliveryApp(isFirebaseInit: isFirebaseInit));
 }
 
 class DeliveryApp extends StatelessWidget {
   final bool isFirebaseInit;
-  final String errorMessage;
-  const DeliveryApp({super.key, required this.isFirebaseInit, required this.errorMessage});
+  const DeliveryApp({super.key, required this.isFirebaseInit});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Delivery Tracker',
-      theme: ThemeData(brightness: Brightness.dark, fontFamily: 'Cairo'),
-      home: isFirebaseInit ? const MainScreen() : ErrorScreen(error: errorMessage),
-    );
-  }
-}
-
-class ErrorScreen extends StatelessWidget {
-  final String error;
-  const ErrorScreen({super.key, required this.error});
-  
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1E1E2C),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Center(
-          child: SingleChildScrollView(
-            child: SelectableText(
-              "تفاصيل الخطأ البرمجي:\n\n$error",
-              style: const TextStyle(color: Colors.redAccent, fontSize: 14),
-              textDirection: TextDirection.ltr,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F111A), // لون الخلفية الداكن المطابق للتصميم
       ),
+      home: isFirebaseInit ? const MainScreen() : const Scaffold(body: Center(child: Text('خطأ في الاتصال'))),
     );
   }
 }
@@ -69,32 +44,42 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
-  final List<Widget> _pages = [const DashboardScreen(), const HistoryScreen()];
+  int _currentIndex = 1; // جعل الشاشة الرئيسية هي المفتوحة افتراضياً
+  final List<Widget> _pages = [
+    const HistoryScreen(),
+    const DashboardScreen(),
+    const SettingsScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF1E1E2C), Color(0xFF3A3A5A), Color(0xFF1E1E2C)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+          gradient: RadialGradient(
+            colors: [Color(0xFF1E2836), Color(0xFF0F111A)],
+            center: Alignment.center,
+            radius: 1.5,
           ),
         ),
-        child: SafeArea(child: _pages[_currentIndex]),
+        child: _pages[_currentIndex],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: const Color(0xFF1E1E2C),
-        selectedItemColor: Colors.orangeAccent,
-        unselectedItemColor: Colors.white54,
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'الشيفت'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'السجل'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: Colors.white12, width: 1)),
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: const Color(0xFF151720),
+          selectedItemColor: Colors.greenAccent,
+          unselectedItemColor: Colors.white54,
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.history), label: 'السجل'),
+            BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'الرئيسية'),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'حسابي'),
+          ],
+        ),
       ),
     );
   }

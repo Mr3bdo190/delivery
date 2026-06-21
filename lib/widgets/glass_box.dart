@@ -6,6 +6,8 @@ class GlassBox extends StatelessWidget {
   final double width;
   final double? height;
   final EdgeInsetsGeometry padding;
+  final Color borderColor;
+  final double borderRadius;
 
   const GlassBox({
     super.key,
@@ -13,12 +15,14 @@ class GlassBox extends StatelessWidget {
     this.width = double.infinity,
     this.height,
     this.padding = const EdgeInsets.all(20),
+    this.borderColor = Colors.white24,
+    this.borderRadius = 25,
   });
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(25),
+      borderRadius: BorderRadius.circular(borderRadius),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
@@ -26,14 +30,14 @@ class GlassBox extends StatelessWidget {
           height: height,
           padding: padding,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+            color: const Color(0xFF1E212A).withOpacity(0.6), // لون داكن زجاجي
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(color: borderColor, width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 20,
-                spreadRadius: -5,
+                color: borderColor.withOpacity(0.2),
+                blurRadius: 15,
+                spreadRadius: 2,
               )
             ],
           ),
